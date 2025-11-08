@@ -17,12 +17,26 @@
       <button id="btnSolved" class="ghost" aria-controls="solvedDrawer" aria-expanded="false" aria-label="Ver acertos">✅ Acertos</button>
       <button id="btnDrawer" class="ghost" aria-controls="drawer" aria-expanded="false" aria-label="Abrir dicas">☰ Dicas</button>
       <button id="btnCategorias" class="ghost" aria-controls="categoryPanel" aria-expanded="false" aria-label="Escolher categoria">🎯 Categoria</button>
-      <button id="btnStats" class="ghost" aria-controls="statsPanel" aria-expanded="false" aria-label="Mostrar estatísticas">📊 Stats</button>
+	      <button id="btnRanking" class="ghost" aria-controls="rankingDrawer" aria-expanded="false" aria-label="Ver Ranking">🏆 Ranking</button>
+	      <button id="btnStats" class="ghost" aria-controls="statsPanel" aria-expanded="false" aria-label="Mostrar estatísticas">📊 Stats</button>
       <button id="btnOnboarding" class="ghost" aria-label="Como jogar">❓ Como jogar</button>
     </nav>
   </header>
 
-  <!-- Left drawer: Solved words -->
+	  <!-- Left drawer: Ranking -->
+	  <aside id="rankingDrawer" class="drawer left" aria-hidden="true" aria-labelledby="btnRanking">
+	    <div class="drawer-head">
+	      <strong>🏆 Ranking Top 10</strong>
+	      <button id="btnCloseRanking" class="ghost" aria-label="Fechar">✕</button>
+	    </div>
+	    <div class="drawer-body">
+	      <ul id="rankingList" class="list ranking-list">
+	        <li>Carregando ranking...</li>
+	      </ul>
+	    </div>
+	  </aside>
+	
+	  <!-- Left drawer: Solved words -->
   <aside id="solvedDrawer" class="drawer left" aria-hidden="true" aria-labelledby="btnSolved">
     <div class="drawer-head">
       <strong>✅ Palavras acertadas</strong>
@@ -52,7 +66,7 @@
   </aside>
 
   <main id="main" class="container" role="main">
-    <section class="card" aria-labelledby="secInicio">
+	    <section class="card" aria-labelledby="secInicio">
       <h2 id="secInicio">👤 Informe seu nome ou apelido</h2>
       <div class="row">
         <label class="visually-hidden" for="nome">Nome</label>
@@ -170,6 +184,10 @@
   <script defer>
     window.DEFAULT_DATA = [{"categoria": "EPIs (Equipamentos de Proteção Individual)", "palavras": ["Capacete", "Luva", "Óculos", "Macacão", "Viseira", "Jugular", "Carneira", "Botina", "Protetor", "Respirador", "Máscara", "Avental", "Mangote", "Calçado", "Colete", "Joelheira", "Touca", "EPI"]}, {"categoria": "Segurança e Prevenção", "palavras": ["Segurança", "Sinalização", "Extintor", "Emergência", "Iluminação", "Cadeado", "Etiqueta", "Evacuação", "Simulado", "Brigada", "Isolamento"]}, {"categoria": "Logística e Armazenamento", "palavras": ["Estoque", "Embalagem", "Palete", "Empilhadeira", "Carrinho", "Código", "Armazenagem", "Movimentação", "Separação", "Inventário", "Conferência", "Almoxarifado", "Rastreabilidade", "Etiquetagem"]}, {"categoria": "Inspeção e Controle", "palavras": ["Inspeção", "Validade", "Checklist", "Auditoria", "Fiscalização", "Integridade", "Calibração", "Certificação", "Homologação", "Controle", "Relatório", "Registro"]}, {"categoria": "Ferramentas e Componentes", "palavras": ["Chapa", "Cabos", "Manilha", "Catraca", "Talha", "Corrente", "Mosquetão", "Gancho", "Roletes", "Alicate", "Martelo", "Serra", "Furadeira", "Parafusadeira", "Trena", "Nível", "Multímetro"]}, {"categoria": "Procedimentos e Treinamentos", "palavras": ["DDS", "Treinamento", "Procedimento", "Cronograma", "Documento", "Plano", "Integração", "Palestra", "SIPAT", "Avaliação", "Certificado", "Programa", "Comunicação", "Reunião", "Feedback"]}, {"categoria": "Operações e Atividades", "palavras": ["Transporte", "Carga", "Embarque", "Desembarque", "Limpeza", "Coleta", "Abastecimento", "Reposição", "Monitoramento", "Supervisão", "Apoio", "Atendimento", "Operação"]}, {"categoria": "Infraestrutura e Instalações", "palavras": ["Vestiário", "Refeitório", "Área", "Sala", "Oficina", "Galpão", "Plataforma", "Armazenamento", "Descarte", "Manutenção", "Portaria", "Estacionamento", "Escritório", "Administrativa", "Técnica", "Externa", "Interna"]}];
   </script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script defer src="./firebase-config.js"></script>
   <script defer src="./app.js"></script>
 </body>
 </html>

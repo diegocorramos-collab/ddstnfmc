@@ -4,6 +4,115 @@ const APP_VERSION = 'v3.5.1';
 // ===== Config =====
 const SERVERLESS_URL = '';
 
+// ===== Firebase =====
+let db;
+let unsubscribeRanking;
+
+function initFirebase() {
+  if (typeof firebase === 'undefined' || typeof firebaseConfig === 'undefined') {
+    console.error("Firebase SDK ou firebaseConfig não carregados.");
+    return;
+  }
+  try {
+    const app = firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    console.log("Firebase inicializado com sucesso.");
+  } catch (e) {
+    console.error("Erro ao inicializar Firebase:", e);
+  }
+}
+
+async function saveScoreToFirebase(playerName, totalPoints) {
+  if (!db) return;
+  const playerRef = db.collection('ranking').doc(playerName);
+  try {
+    await playerRef.set({
+      nome: playerName,
+      pontosTotal: totalPoints,
+      ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    console.log("Pontuação salva no Firebase para:", playerName);
+  } catch (e) {
+    console.error("Erro ao salvar pontuação no Firebase:", e);
+  }
+}
+
+function renderRanking(ranking) {
+  const list = $('#rankingList');
+  if (!list) return;
+  list.innerHTML = '';
+  if (ranking.length === 0) {
+    list.innerHTML = '<li>Nenhum jogador no ranking ainda.</li>';
+    return;
+  }
+
+  ranking.forEach((player, index) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>#${index + 1}</strong> ${player.nome} <span class="pill">${player.pontosTotal} pontos</span>`;
+    list.appendChild(li);
+  });
+}
+
+function startRankingListener() {
+  if (!db) return;
+  if (unsubscribeRanking) unsubscribeRanking(); // Limpa listener anterior, se houver
+
+  const rankingRef = db.collection('ranking')
+    .orderBy('pontosTotal', 'desc')
+    .limit(10);
+
+  unsubscribeRanking = rankingRef.onSnapshot(snapshot => {
+    const ranking = [];
+    snapshot.forEach(doc => {
+      ranking.push(doc.data());
+    });
+    renderRanking(ranking);
+  }, error => {
+    console.error("Erro ao ouvir o ranking:", error);
+    $('#rankingList').innerHTML = '<li>Erro ao carregar o ranking.</li>';
+  });
+  console.log("Listener do ranking iniciado.");
+}
+
+function stopRankingListener() {
+  if (unsubscribeRanking) {
+    unsubscribeRanking();
+    unsubscribeRanking = null;
+    console.log("Listener do ranking parado.");
+  }
+}
+
+function toggleRanking(open){
+  const dr=$('#rankingDrawer');
+  if (!dr) return;
+  if (open===undefined) open = !dr.classList.contains('open');
+  dr.classList.toggle('open', open);
+  dr.setAttribute('aria-hidden', open?'false':'true');
+  $('#btnRanking')?.setAttribute('aria-expanded', open?'true':'false');
+  if (open) startRankingListener(); else stopRankingListener();
+}
+
+// Adicionar um estilo básico para a lista de ranking
+const style = document.createElement('style');
+style.textContent = `
+.ranking-list {
+  list-style: none;
+  padding: 0;
+}
+.ranking-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ranking-list li:last-child {
+  border-bottom: none;
+}
+`;
+document.head.appendChild(style);
+
+
 // ===== Util =====
 const $ = (sel) => document.querySelector(sel);
 const on = (el, ev, fn) => el.addEventListener(ev, fn);
@@ -208,10 +317,13 @@ function zerarTudo(){ localStorage.removeItem(KEY_STATS); localStorage.removeIte
 
 // ===== Main =====
 async function main(){
+  initFirebase(); // Inicializa o Firebase no início
   $('#appVersion').textContent = APP_VERSION; DATA = loadData(); state.totalRodadas = DATA.reduce((a,c)=> a + c.palavras.length, 0); $('#rodadasTot').textContent = state.totalRodadas; renderStatsGlobais(); if (!localStorage.getItem(KEY_FIRST)){ openModal($('#onboarding')); }
 
   // Topbar
   on($('#btnSolved'), 'click', () => toggleSolved());
+  on($('#btnRanking'), 'click', () => toggleRanking());
+  on($('#btnCloseRanking'), 'click', () => toggleRanking(false));
   on($('#btnCloseSolved'), 'click', () => toggleSolved());
   on($('#btnDrawer'), 'click', () => toggleDrawer());
   on($('#btnCloseDrawer'), 'click', () => toggleDrawer());
@@ -253,7 +365,11 @@ async function main(){
     if (erros % 10 === 0){ state.pontosRodada = Math.max(0, state.pontosRodada - 1); $('#pontosRodada').textContent = state.pontosRodada; }
 
     if (guess === state.answer){
-      $('#feedback').textContent = '🎉 Parabéns! Próxima palavra…'; state.pontosTotal += state.pontosRodada; $('#pontosTotal').textContent = state.pontosTotal; const w=state.answer; setProximity(100);
+	      $('#feedback').textContent = '🎉 Parabéns! Próxima palavra…'; state.pontosTotal += state.pontosRodada; $('#pontosTotal').textContent = state.pontosTotal; const w=state.answer; setProximity(100);
+	      // Salva a pontuação total no Firebase
+	      if (state.nome && state.nome !== '—') {
+	        saveScoreToFirebase(state.nome, state.pontosTotal);
+	      }
       const s = loadStats(); s.rodadas = (s.rodadas||0) + 1; s.ganhas = (s.ganhas||0) + 1; saveStats(s);
       markCompleted(state.idxCat, state.idxWord, (DATA[state.idxCat].palavras||[]).length);
       addSolved(state.idxCat, state.idxWord);
