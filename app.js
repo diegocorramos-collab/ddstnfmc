@@ -272,72 +272,193 @@ function toggleSolved(open){ const dr=$('#solvedDrawer'); if (!dr) return; if (o
 function updateCategoryChooserList(){
   const ul = $('#categoryList'); if (!ul) return; ul.innerHTML = '';
   DATA.forEach((cat, idx)=>{
-    const total = cat.palavras.length; const {done} = getCounts(idx, total);
+    const {done, remaining} = getCounts(idx, cat.palavras.length);
     const li = document.createElement('li');
-    const left = document.createElement('div'); left.className='catrow';
-    const title = document.createElement('div'); title.innerHTML = `<strong>${cat.categoria}</strong> <span class=\"muted small\">(${done}/${total})</span>`;
-    const bar = document.createElement('div'); bar.className='catbar'; const fill = document.createElement('span'); fill.style.width = (total? (100*done/total):0) + '%'; bar.appendChild(fill);
-    left.append(title, bar);
-    const btn = document.createElement('button'); btn.textContent='Jogar'; btn.className='primary'; btn.dataset.idx = idx;
-    btn.addEventListener('click', ()=>{ state.idxCat = idx; const t = DATA[idx].palavras.length; state.idxWord = getFirstUnfinished(idx, t); state.hintStep=0; closeModal($('#categoryPanel')); novaRodada(); });
-    li.append(left, btn); ul.appendChild(li);
+    li.innerHTML = `<button data-idx="${idx}" class="ghost ${idx===state.idxCat?'active':''}">
+      <strong>${cat.categoria}</strong>
+      <span class="small muted">${done}/${cat.palavras.length} concluídas</span>
+    </button>`;
+    on(li.querySelector('button'), 'click', ()=>{
+      state.idxCat = idx;
+      state.idxWord = getFirstUnfinished(idx, cat.palavras.length);
+      saveLast();
+      closeModal($('#categoryPanel'));
+      novaRodada();
+    });
+    ul.appendChild(li);
+  });
+}
+function toggleCategory(open){ const dr=$('#categoryPanel'); if (!dr) return; if (open===undefined) open = !dr.classList.contains('open'); dr.classList.toggle('open', open); dr.setAttribute('aria-hidden', open?'false':'true'); $('#btnCategorias')?.setAttribute('aria-expanded', open?'true':'false'); if (open) updateCategoryChooserList(); }
+
+// ===== Game Logic =====
+let DATA = loadData();
+function novaRodada(){
+  const cat = DATA[state.idxCat];
+  if (!cat) return;
+  state.totalRodadas = cat.palavras.length;
+  state.idxWord = getFirstUnfinished(state.idxCat, state.totalRodadas);
+  if (state.idxWord >= state.totalRodadas){
+    $('#feedback').textContent = `Parabéns! Você concluiu a categoria "${cat.categoria}"!`;
+    $('#palpite').disabled = true; $('#enviar').disabled = true; $('#ajuda').disabled = true;
+    return;
+  }
+  state.rodada = state.idxWord + 1;
+  state.categoria = cat.categoria;
+  state.answer = normalize(cat.palavras[state.idxWord]);
+  state.rankMap = construirRankMap(cat.palavras);
+  state.historico = getHistory(state.idxCat, state.idxWord).map(h=>h.guess);
+  state.pontosRodada = 100;
+  state.ajudas = 3;
+  state.hintStep = 0;
+  $('#rodadaAtual').textContent = state.rodada;
+  $('#rodadasTot').textContent = state.totalRodadas;
+  $('#categoria').textContent = state.categoria;
+  $('#pontosRodada').textContent = state.pontosRodada;
+  $('#ajudasRest').textContent = state.ajudas;
+  $('#palpite').value = '';
+  $('#palpite').disabled = false; $('#enviar').disabled = false; $('#ajuda').disabled = false;
+  $('#historico').innerHTML = '';
+  setProximity(0);
+  renderHistorico();
+  saveLast();
+}
+
+function renderHistorico(){
+  const ul = $('#historico'); if (!ul) return; ul.innerHTML = '';
+  const hist = getHistory(state.idxCat, state.idxWord);
+  hist.forEach(h=>{
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${h.guess}</strong> <span class="pill ${h.cls}">${h.icon} ${h.tip}</span>`;
+    ul.appendChild(li);
   });
 }
 
-async function logEvent(evt){ try{ if(!SERVERLESS_URL) return; await fetch(SERVERLESS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(evt)}); }catch(e){} }
-
-// ===== Fluxo =====
-let DATA = [];
-function novaRodada(){
-  saveLast();
-  while (state.idxCat < DATA.length && state.idxWord >= (DATA[state.idxCat].palavras||[]).length){ state.idxCat++; state.idxWord = 0; }
-  if (state.idxCat >= DATA.length){ $('#feedback').textContent = '🎉 Parabéns! Todas as palavras concluídas.'; setProximity(100); renderStatsGlobais(); return; }
-
-  const cat = DATA[state.idxCat]; const total = cat.palavras.length;
-  state.idxWord = getFirstUnfinished(state.idxCat, total);
-  if (state.idxWord >= total){ state.idxCat++; state.idxWord = 0; return novaRodada(); }
-
-  state.pontosRodada = 100; state.ajudas = 3; state.historico = []; state.hintStep = 0;
-  state.categoria = cat.categoria; state.rankMap = construirRankMap(cat.palavras); state.answer = normalize(cat.palavras[state.idxWord]);
-
-  $('#rodadaAtual').textContent = absoluteRound(DATA); $('#rodadasTot').textContent = state.totalRodadas; $('#categoria').textContent = state.categoria; $('#pontosRodada').textContent = state.pontosRodada; $('#ajudasRest').textContent = state.ajudas; $('#feedback').textContent = 'Nenhum palpite ainda.'; setProximity(0); $('#palpite').value=''; $('#palpite').focus();
-  renderStatsGlobais();
-  renderHistory(); // <— exibe histórico persistente desta palavra
+function checkGuess(guess){
+  const guessNorm = primeiraPalavra(guess);
+  if (!guessNorm) return;
+  if (state.historico.includes(guessNorm)) return $('#feedback').textContent = `Você já tentou "${guessNorm}".`;
+  
+  const prox = proximidade(guessNorm, state.answer);
+  pushHistory(state.idxCat, state.idxWord, {guess:guessNorm, ...prox});
+  state.historico.unshift(guessNorm);
+  renderHistorico();
+  setProximity(prox.pct);
+  
+  if (guessNorm === state.answer){
+    // Acertou
+    $('#feedback').textContent = `🎉 Parabéns! Você acertou a palavra: "${DATA[state.idxCat].palavras[state.idxWord]}".`;
+    markCompleted(state.idxCat, state.idxWord, state.totalRodadas);
+    addSolved(state.idxCat, state.idxWord);
+    
+    // Atualiza pontuação total
+    state.pontosTotal += state.pontosRodada;
+    $('#pontosTotal').textContent = state.pontosTotal;
+    
+    // Salva no Firebase
+    saveScoreToFirebase(state.nome, state.pontosTotal);
+    
+    // Atualiza estatísticas
+    const s = loadStats(); s.rodadas++; s.ganhas++; saveStats(s);
+    renderStatsGlobais();
+    
+    // Próxima rodada
+    setTimeout(novaRodada, 2000);
+    
+  } else {
+    // Errou
+    $('#feedback').textContent = `Palpite "${guessNorm}" incorreto. Proximidade: ${prox.tip}.`;
+    state.pontosRodada = Math.max(0, state.pontosRodada - 1);
+    $('#pontosRodada').textContent = state.pontosRodada;
+    
+    // Penalidade por erro (a cada 10 erros)
+    if (state.historico.length % 10 === 0 && state.pontosTotal > 0){
+      state.pontosTotal = Math.max(0, state.pontosTotal - 1);
+      $('#pontosTotal').textContent = state.pontosTotal;
+      saveScoreToFirebase(state.nome, state.pontosTotal); // Salva penalidade
+    }
+    
+    // Atualiza estatísticas
+    const s = loadStats(); s.rodadas++; saveStats(s);
+    renderStatsGlobais();
+  }
+  $('#palpite').value = '';
 }
 
-// ===== Modais & Drawer =====
-function openModal(el){ el.hidden = false; }
-function closeModal(el){ el.hidden = true; }
-function toggleDrawer(open){ const drawer=$('#drawer'); if (open===undefined) open = !drawer.classList.contains('open'); drawer.classList.toggle('open', open); drawer.setAttribute('aria-hidden', open?'false':'true'); $('#btnDrawer').setAttribute('aria-expanded', open?'true':'false'); }
+function useHint(){
+  if (state.ajudas <= 0) return $('#feedback').textContent = 'Você não tem mais ajudas disponíveis.';
+  if (state.pontosTotal < 10) return $('#feedback').textContent = 'Você precisa de pelo menos 10 pontos para pedir ajuda.';
+  
+  state.ajudas--;
+  state.pontosTotal = Math.max(0, state.pontosTotal - 10);
+  $('#pontosTotal').textContent = state.pontosTotal;
+  $('#ajudasRest').textContent = state.ajudas;
+  saveScoreToFirebase(state.nome, state.pontosTotal); // Salva custo da ajuda
+  
+  const word = DATA[state.idxCat].palavras[state.idxWord];
+  let hint = '';
+  switch(state.hintStep){
+    case 0: hint = `A palavra tem ${word.length} letras.`; break;
+    case 1: hint = `Começa com a letra "${word[0]}".`; break;
+    case 2: hint = `Termina com a letra "${word[word.length-1]}".`; break;
+    case 3: hint = `Uma palavra próxima é: "${getClosestWord()}".`; break;
+    default: hint = `A palavra é: "${word}".`;
+  }
+  state.hintStep++;
+  $('#feedback').textContent = `💡 Dica: ${hint}`;
+}
 
-function registerShortcuts(){ on(document, 'keydown', (e)=>{ const key=e.key; const lower=key.toLowerCase(); const ae=document.activeElement; const typing=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable); if (key==='?'){ e.preventDefault(); toggleDrawer(); return; } if (typing && (lower==='a')) return; if (lower==='a'){ e.preventDefault(); $('#ajuda').click(); return; } if (key==='Escape'){ e.preventDefault(); $('#limpar').click(); return; } }); }
+// ===== Modals =====
+function openModal(el){ el.hidden = false; el.classList.add('open'); }
+function closeModal(el){ el.hidden = true; el.classList.remove('open'); }
 
-// ===== Zerar =====
-function zerarTudo(){ localStorage.removeItem(KEY_STATS); localStorage.removeItem(KEY_FIRST); localStorage.removeItem(KEY_PROGRESS); localStorage.removeItem(KEY_LAST); localStorage.removeItem(KEY_SOLVED); localStorage.removeItem(KEY_CAT_HISTORY); state.pontosTotal=0; state.rodada=0; state.historico=[]; state.idxCat=0; state.idxWord=0; state.hintStep=0; $('#historico').innerHTML=''; $('#pontosTotal').textContent='0'; DATA=loadData(); state.totalRodadas = DATA.reduce((a,c)=> a + c.palavras.length, 0); $('#rodadasTot').textContent=state.totalRodadas; renderStatsGlobais(); openModal($('#onboarding')); }
-
-// ===== Main =====
-async function main(){
-  initFirebase(); // Inicializa o Firebase no início
-  $('#appVersion').textContent = APP_VERSION; DATA = loadData(); state.totalRodadas = DATA.reduce((a,c)=> a + c.palavras.length, 0); $('#rodadasTot').textContent = state.totalRodadas; renderStatsGlobais(); if (!localStorage.getItem(KEY_FIRST)){ openModal($('#onboarding')); }
-
-  // Topbar
-  on($('#btnSolved'), 'click', () => toggleSolved());
-  on($('#btnRanking'), 'click', () => toggleRanking());
-  on($('#btnCloseRanking'), 'click', () => toggleRanking(false));
-  on($('#btnCloseSolved'), 'click', () => toggleSolved());
-  on($('#btnDrawer'), 'click', () => toggleDrawer());
-  on($('#btnCloseDrawer'), 'click', () => toggleDrawer());
-  on($('#btnStats'), 'click', () => { renderStatsGlobais(); openModal($('#statsPanel')); });
-  on($('#closeStats'), 'click', () => closeModal($('#statsPanel')));
-  on($('#btnCategorias'), 'click', () => { updateCategoryChooserList(); openModal($('#categoryPanel')); });
-  on($('#closeCategory'), 'click', () => closeModal($('#categoryPanel')));
+// ===== Init =====
+const DATA = loadData();
+function init(){
+  $('#appVersion').textContent = APP_VERSION;
+  if (!localStorage.getItem(KEY_FIRST)){ openModal($('#onboarding')); }
+  
+  // Inicializa Firebase
+  initFirebase();
+  
+  // Eventos
+  on($('#btnCloseDrawer'), 'click', ()=> toggleDrawer(false));
+  on($('#btnDrawer'), 'click', ()=> toggleDrawer());
+  on($('#btnCloseSolved'), 'click', ()=> toggleSolved(false));
+  on($('#btnSolved'), 'click', ()=> toggleSolved());
+  on($('#btnCloseRanking'), 'click', ()=> toggleRanking(false));
+  on($('#btnRanking'), 'click', ()=> toggleRanking());
+  on($('#btnCloseCategory'), 'click', ()=> toggleCategory(false));
+  on($('#btnCategorias'), 'click', ()=> toggleCategory());
+  on($('#closeStats'), 'click', ()=> closeModal($('#statsPanel')));
+  on($('#btnStats'), 'click', ()=> openModal($('#statsPanel')));
   on($('#btnOnboarding'), 'click', () => openModal($('#onboarding')));
   on($('#onStart'), 'click', () => { localStorage.setItem(KEY_FIRST, '1'); closeModal($('#onboarding')); $('#nome').focus(); });
 
   // Iniciar
-  on($('#iniciar'), 'click', ()=>{
+  on($('#iniciar'), 'click', async ()=>{
     const nome=$('#nome').value.trim() || '—'; state.nome = nome; localStorage.setItem('dds-contexto-nome', nome);
     renderStatsGlobais();
+
+    // 1. Recuperar pontuação do Firebase
+    if (db && nome !== '—') {
+      try {
+        const doc = await db.collection('ranking').doc(nome).get();
+        if (doc.exists) {
+          state.pontosTotal = doc.data().pontosTotal || 0;
+          console.log(`Pontuação de ${nome} recuperada do Firebase: ${state.pontosTotal}`);
+        } else {
+          state.pontosTotal = 0;
+          console.log(`Jogador ${nome} não encontrado no Firebase. Iniciando com 0 pontos.`);
+        }
+      } catch (e) {
+        console.error("Erro ao recuperar pontuação do Firebase:", e);
+        state.pontosTotal = 0; // Fallback para 0 em caso de erro
+      }
+    } else {
+      state.pontosTotal = 0;
+    }
+
+    // 2. Continuar com a lógica de rodada
     const last = (function(){ try{ return JSON.parse(localStorage.getItem(KEY_LAST)) || null; }catch{return null;} })();
     if (last && Number.isInteger(last.idxCat)){
       state.idxCat = Math.min(Math.max(0, last.idxCat), DATA.length-1);
@@ -345,66 +466,50 @@ async function main(){
       state.idxCat = 0;
       for (let i=0;i<DATA.length;i++){ const total = DATA[i].palavras.length; if (getFirstUnfinished(i, total) < total){ state.idxCat = i; break; } }
     }
-    state.idxWord = 0; state.hintStep=0; state.pontosTotal = state.pontosTotal || 0; $('#pontosTotal').textContent = state.pontosTotal;
+    state.idxWord = 0; state.hintStep=0; $('#pontosTotal').textContent = state.pontosTotal;
     novaRodada();
   });
 
   // Palpite
   on($('#form'), 'submit', (e)=>{ e.preventDefault(); $('#enviar').click(); });
   on($('#enviar'), 'click', async ()=>{
-    const raw = $('#palpite').value; const guess = primeiraPalavra(raw); if (!guess){ $('#feedback').textContent = 'Digite um palpite.'; return; }
-    const prox = proximidade(guess, state.answer); setProximity(prox.pct);
-
-    const erros = state.historico.push(guess);
-    const li = document.createElement('li');
-    li.innerHTML = `<span class="badge ${prox.cls}">${prox.icon} ${prox.dist===Infinity?'—':prox.dist}</span> <strong>${guess}</strong> <span class="muted small">(${prox.tip} — ${prox.pct}%)</span>`;
-    $('#historico').prepend(li);
-    // Salva no histórico persistente desta categoria/palavra
-    pushHistory(state.idxCat, state.idxWord, { g: guess, prox });
-
-    if (erros % 10 === 0){ state.pontosRodada = Math.max(0, state.pontosRodada - 1); $('#pontosRodada').textContent = state.pontosRodada; }
-
-    if (guess === state.answer){
-	      $('#feedback').textContent = '🎉 Parabéns! Próxima palavra…'; state.pontosTotal += state.pontosRodada; $('#pontosTotal').textContent = state.pontosTotal; const w=state.answer; setProximity(100);
-	      // Salva a pontuação total no Firebase
-	      if (state.nome && state.nome !== '—') {
-	        saveScoreToFirebase(state.nome, state.pontosTotal);
-	      }
-      const s = loadStats(); s.rodadas = (s.rodadas||0) + 1; s.ganhas = (s.ganhas||0) + 1; saveStats(s);
-      markCompleted(state.idxCat, state.idxWord, (DATA[state.idxCat].palavras||[]).length);
-      addSolved(state.idxCat, state.idxWord);
-      renderStatsGlobais(); await logEvent({ action:'solve', player:state.nome, ts:new Date().toISOString(), category:state.categoria, word:w, attempts: state.historico.length, points: state.pontosRodada });
-      const total = DATA[state.idxCat].palavras.length; let next = getFirstUnfinished(state.idxCat, total);
-      if (next >= total){
-        let moved = false;
-        for (let i=state.idxCat+1; i<DATA.length; i++){
-          const t = DATA[i].palavras.length; if (getFirstUnfinished(i, t) < t){ state.idxCat = i; state.idxWord = 0; moved = true; break; }
-        }
-        if (!moved){ /* todas concluídas */ }
-      } else {
-        state.idxWord = next;
-      }
-      setTimeout(()=> novaRodada(), 600);
-      if (document.querySelector('#solvedDrawer.open')) renderSolvedDrawer();
-    } else {
-      $('#feedback').textContent = `Proximidade: ${prox.icon} — ${prox.pct}%`;
+    const palpite = $('#palpite').value;
+    if (!palpite) return;
+    checkGuess(palpite);
+  });
+  
+  // Ajuda
+  on($('#ajuda'), 'click', useHint);
+  
+  // Limpar
+  on($('#limpar'), 'click', ()=>{ $('#palpite').value = ''; });
+  
+  // Atalhos de teclado
+  on(document, 'keydown', (e)=>{
+    if (e.key === 'Escape'){
+      if ($('#palpite').value) $('#palpite').value = '';
+      else if ($('#solvedDrawer').classList.contains('open')) toggleSolved(false);
+      else if ($('#rankingDrawer').classList.contains('open')) toggleRanking(false);
+      else if ($('#categoryPanel').classList.contains('open')) toggleCategory(false);
+      else if ($('#statsPanel').hidden === false) closeModal($('#statsPanel'));
+      else if ($('#onboarding').hidden === false) closeModal($('#onboarding'));
+    } else if (e.key === '?'){
+      if ($('#drawer').classList.contains('open')) toggleDrawer(false);
+      else toggleDrawer(true);
+    } else if (e.key === 'a' && document.activeElement !== $('#palpite')){
+      e.preventDefault();
+      useHint();
     }
-    $('#palpite').value=''; $('#palpite').focus();
   });
-
-  // Dicas
-  on($('#ajuda'), 'click', async ()=>{
-    if (state.ajudas <= 0) { $('#feedback').textContent = 'Sem mais dicas nesta rodada.'; return; }
-    let msg=''; if (state.hintStep === 0){ const letras=state.answer.length; msg=`A resposta tem ${letras} letras.`; } else if (state.hintStep === 1){ msg=`Começa com "${state.answer[0].toUpperCase()}".`; } else { const w=getClosestWord(); msg = w ? `Uma palavra bem próxima é "${w}".` : 'Sem palavra próxima disponível.'; }
-    state.ajudas--; state.hintStep++; $('#ajudasRest').textContent = state.ajudas; state.pontosRodada = Math.max(0, state.pontosRodada - 10); $('#pontosRodada').textContent = state.pontosRodada; $('#feedback').textContent = '\uD83D\uDCA1 ' + msg; await logEvent({ action:'hint', player:state.nome, ts:new Date().toISOString(), category:state.categoria, wordIndex: state.idxWord, hintStep: state.hintStep });
-  });
-
-  // Limpar & Zerar
-  on($('#limpar'), 'click', ()=>{ $('#palpite').value=''; $('#palpite').focus(); });
-  on($('#zerar'), 'click', zerarTudo);
-
-  registerShortcuts();
-  if ('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('./sw.js'); }catch(e){ console.warn('SW falhou', e); } }
+  
+  // Renderização inicial
+  renderStatsGlobais();
+  if (state.nome !== '—'){
+    $('#nome').value = state.nome;
+    $('#iniciar').click();
+  }
 }
 
-window.addEventListener('DOMContentLoaded', main);
+// Inicia o app após o carregamento do DOM
+on(document, 'DOMContentLoaded', init);
+on(window, 'load', initFirebase); // Inicializa Firebase após o carregamento de todos os scripts
