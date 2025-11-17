@@ -466,7 +466,13 @@ function init(){
       state.idxCat = 0;
       for (let i=0;i<DATA.length;i++){ const total = DATA[i].palavras.length; if (getFirstUnfinished(i, total) < total){ state.idxCat = i; break; } }
     }
-    state.idxWord = 0; state.hintStep=0; $('#pontosTotal').textContent = state.pontosTotal;
+    
+    // Recuperar o índice da palavra da última sessão
+    const totalPalavras = DATA[state.idxCat].palavras.length;
+    const lastWordIndex = getFirstUnfinished(state.idxCat, totalPalavras);
+    state.idxWord = lastWordIndex;
+
+    state.hintStep=0; $('#pontosTotal').textContent = state.pontosTotal;
     novaRodada();
   });
 
@@ -506,7 +512,27 @@ function init(){
   renderStatsGlobais();
   if (state.nome !== '—'){
     $('#nome').value = state.nome;
-    $('#iniciar').click();
+    // Não chame $('#iniciar').click() aqui, pois ele redefine o estado.
+    // Apenas renderize o nome e espere o usuário clicar em Iniciar.
+    // $('#iniciar').click(); // REMOVIDO
+  }
+  
+  // Se o nome já estiver preenchido, carregue o estado da categoria/rodada para exibição
+  if (state.nome !== '—') {
+    const last = loadLast();
+    if (last && Number.isInteger(last.idxCat)){
+      state.idxCat = Math.min(Math.max(0, last.idxCat), DATA.length-1);
+    } else {
+      state.idxCat = 0;
+    }
+    
+    const totalPalavras = DATA[state.idxCat].palavras.length;
+    state.idxWord = getFirstUnfinished(state.idxCat, totalPalavras);
+    
+    // Renderiza a categoria e rodada atual na tela de início
+    $('#rodadaAtual').textContent = state.idxWord + 1;
+    $('#rodadasTot').textContent = totalPalavras;
+    $('#categoria').textContent = DATA[state.idxCat].categoria;
   }
 }
 
