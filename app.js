@@ -1,5 +1,6 @@
 // ===== Versão =====
-const APP_VERSION = 'v3.6.0';
+const APP_VERSION = 'v3.7.0'; // Altere esta versão para forçar reset global
+const KEY_APP_VERSION = 'dds-contexto-app-version';
 
 // ===== Config =====
 const SERVERLESS_URL = '';
@@ -337,6 +338,25 @@ function zerarTudo(){ localStorage.removeItem(KEY_STATS); localStorage.removeIte
 // ===== Main =====
 async function main(){
   initFirebase(); // Inicializa o Firebase no início
+  
+  // ===== Verificação de Versão e Reset Automático =====
+  const savedVersion = localStorage.getItem(KEY_APP_VERSION);
+  if (savedVersion !== APP_VERSION) {
+    console.log(`Nova versão detectada: ${APP_VERSION}. Resetando dados...`);
+    // Limpa todos os dados do jogo
+    localStorage.removeItem(KEY_STATS);
+    localStorage.removeItem(KEY_FIRST);
+    localStorage.removeItem(KEY_PROGRESS);
+    localStorage.removeItem(KEY_LAST);
+    localStorage.removeItem(KEY_SOLVED);
+    localStorage.removeItem(KEY_CAT_HISTORY);
+    localStorage.removeItem(KEY_PONTOS_TOTAL);
+    localStorage.removeItem('dds-contexto-nome');
+    // Salva a nova versão
+    localStorage.setItem(KEY_APP_VERSION, APP_VERSION);
+    console.log('Dados resetados com sucesso!');
+  }
+  
   $('#appVersion').textContent = APP_VERSION; 
   DATA = loadData(); 
   state.totalRodadas = DATA.reduce((a,c)=> a + c.palavras.length, 0); 
