@@ -1,193 +1,53 @@
-<!doctype html>
-<html lang="pt-BR">
+<!DOCTYPE html>
+<html lang='pt-BR'>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0f172a" />
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="icon" href="./icons/icon-192.png" />
-  <title>Contexto — DDS TechnipFMC</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <noscript><style>main{display:none}</style><div class="noscript">Este jogo precisa de JavaScript habilitado.</div></noscript>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Final do Desafio</title>
+    <link href='https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap' rel='stylesheet'>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 1.2rem;
+            font-weight: 400;
+        }
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            p {
+                font-size: 1rem;
+            }
+        }
+    </style>
 </head>
 <body>
-  <header class="topbar" role="banner">
-    <div class="brand">Contexto — DDS TechnipFMC <span class="ver" id="appVersion"></span></div>
-    <nav class="actions" aria-label="Ações">
-      <button id="btnSolved" class="ghost" aria-controls="solvedDrawer" aria-expanded="false" aria-label="Ver acertos">✅ Acertos</button>
-      <button id="btnDrawer" class="ghost" aria-controls="drawer" aria-expanded="false" aria-label="Abrir dicas">☰ Dicas</button>
-      <button id="btnCategorias" class="ghost" aria-controls="categoryPanel" aria-expanded="false" aria-label="Escolher categoria">🎯 Categoria</button>
-	      <button id="btnRanking" class="ghost" aria-controls="rankingDrawer" aria-expanded="false" aria-label="Ver Ranking">🏆 Ranking</button>
-	      <button id="btnStats" class="ghost" aria-controls="statsPanel" aria-expanded="false" aria-label="Mostrar estatísticas">📊 Stats</button>
-      <button id="btnOnboarding" class="ghost" aria-label="Como jogar">❓ Como jogar</button>
-    </nav>
-  </header>
-
-	  <!-- Left drawer: Ranking -->
-	  <aside id="rankingDrawer" class="drawer left" aria-hidden="true" aria-labelledby="btnRanking">
-	    <div class="drawer-head">
-	      <strong>🏆 Ranking Top 10</strong>
-	      <button id="btnCloseRanking" class="ghost" aria-label="Fechar">✕</button>
-	    </div>
-	    <div class="drawer-body">
-	      <ul id="rankingList" class="list ranking-list">
-	        <li>Carregando ranking...</li>
-	      </ul>
-	    </div>
-	  </aside>
-	
-	  <!-- Left drawer: Solved words -->
-  <aside id="solvedDrawer" class="drawer left" aria-hidden="true" aria-labelledby="btnSolved">
-    <div class="drawer-head">
-      <strong>✅ Palavras acertadas</strong>
-      <button id="btnCloseSolved" class="ghost" aria-label="Fechar">✕</button>
+    <div class='container'>
+        <h1>Final do Desafio</h1>
+        <p>Obrigado por acompanhar até aqui!</p>
     </div>
-    <div class="drawer-body">
-      <div id="solvedSummary" class="small muted" style="margin-bottom:8px">—</div>
-      <ul id="solvedList" class="list"></ul>
-    </div>
-  </aside>
-
-  <!-- Right drawer: Tips -->
-  <aside id="drawer" class="drawer" aria-hidden="true" aria-labelledby="btnDrawer">
-    <div class="drawer-head">
-      <strong>💡 Dicas rápidas</strong>
-      <button id="btnCloseDrawer" class="ghost" aria-label="Fechar">✕</button>
-    </div>
-    <div class="drawer-body small">
-      <ul>
-        <li>Use <kbd>Enter</kbd> para enviar, <kbd>Esc</kbd> para limpar.</li>
-        <li><kbd>?</kbd> abre/fecha este painel. <kbd>A</kbd> = ajuda (fora do campo).</li>
-        <li>Somente a <strong>primeira palavra</strong> do palpite é considerada.</li>
-        <li>Proximidade: <span class="badge rocket">🚀 ≤10</span> · <span class="badge spark">✨ ≤20</span> · <span class="badge fire">🔥 ≤100</span> · <span class="badge snow">❄️ &gt;100</span>.</li>
-        <li>Ajuda custa <strong>10 pontos</strong>. A cada 10 erros, –1 ponto.</li>
-      </ul>
-    </div>
-  </aside>
-
-  <main id="main" class="container" role="main">
-	    <section class="card" aria-labelledby="secInicio">
-      <h2 id="secInicio">👤 Informe seu nome ou apelido</h2>
-      <div class="row">
-        <label class="visually-hidden" for="nome">Nome</label>
-        <input id="nome" type="text" placeholder="Seu nome" autocomplete="name" />
-        <button id="iniciar" class="primary">Iniciar ▶</button>
-      </div>
-      <div id="statsGlobais" class="stats small" aria-live="polite">
-        <span class="pill" id="sgJogador">Jogador: —</span>
-        <span class="pill" id="sgRodadas">Rodadas: 0</span>
-        <span class="pill" id="sgGanhas">Ganhas: 0</span>
-        <span class="pill" id="sgTaxa">Taxa: 0%</span>
-        <span class="pill" id="sgGlobalDone">Concluídas (Geral): 0/0</span>
-      </div>
-      <div class="global-progress small">
-        <div class="progress"><div id="globalProgressFill" style="width:0%"></div></div>
-      </div>
-    </section>
-
-    <section class="card" aria-labelledby="secRodada">
-      <h3 id="secRodada">🎮 Rodada <span id="rodadaAtual">—</span>/<span id="rodadasTot">—</span></h3>
-      <div class="row wrap">
-        <span>👤 <strong id="jogador">—</strong></span>
-        <span class="pill">Pontos (total): <strong id="pontosTotal">0</strong></span>
-        <span class="pill">Pontos da rodada: <strong id="pontosRodada">100</strong></span>
-        <span class="pill">Ajudas: <strong id="ajudasRest">3</strong></span>
-        <span class="pill">Categoria: <strong id="categoria">—</strong></span>
-      </div>
-
-      <form id="form" class="row" autocomplete="off">
-        <label class="visualmente-hidden" for="palpite">Palpite</label>
-        <input id="palpite" type="text" placeholder="Digite seu palpite…" aria-describedby="hintPalpite"/>
-        <button id="enviar" class="primary" type="submit">Enviar</button>
-        <button id="ajuda" type="button">Pedir ajuda (–10)</button>
-        <button id="limpar" type="button">Limpar</button>
-      </form>
-      <div id="hintPalpite" class="muted small">Dica: apenas a primeira palavra será usada.</div>
-
-      <div id="feedback" class="aria-live" aria-live="polite">Nenhum palpite ainda.</div>
-      <div class="prox-wrap">
-        <div class="progress"><div id="progressFill" style="width:0%"></div></div>
-        <div class="small" style="margin-top:6px"><strong id="progressPct">0%</strong> — proximidade</div>
-      </div>
-    </section>
-
-    <section class="card" aria-labelledby="secHistorico">
-      <h4 id="secHistorico">🕘 Histórico</h4>
-      <ul id="historico" class="list"></ul>
-    </section>
-
-    <section class="card" aria-labelledby="secRegras">
-      <h5 id="secRegras">📄 Regras do Jogo</h5>
-      <ul class="small">
-        <li>Somente a primeira palavra do palpite é considerada.</li>
-        <li>Proximidade: 🚀 (≤10) · ✨ (≤20) · 🔥 (≤100) · ❄️ (&gt;100).</li>
-        <li>Ajuda custa 10 pontos. Cada 10 erros descontam 1 ponto.</li>
-        <li>As palavras seguem a ordem das categorias informadas.</li>
-      </ul>
-    </section>
-  </main>
-
-  <!-- Stats -->
-  <section id="statsPanel" class="modal" role="dialog" aria-modal="true" aria-labelledby="statsTitle" hidden>
-    <div class="modal-card">
-      <header class="modal-head">
-        <h3 id="statsTitle">📊 Estatísticas</h3>
-        <button id="closeStats" class="ghost" aria-label="Fechar">✕</button>
-      </header>
-      <div class="modal-body">
-        <div class="grid3">
-          <div class="tile"><div class="t-label">Rodadas</div><div class="t-value" id="mRodadas">0</div></div>
-          <div class="tile"><div class="t-label">Ganhas</div><div class="t-value" id="mGanhas">0</div></div>
-          <div class="tile"><div class="t-label">Concluídas (Geral)</div><div class="t-value" id="mGlobalDone">0/0</div></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Onboarding -->
-  <section id="onboarding" class="modal" role="dialog" aria-modal="true" aria-labelledby="onTitle" hidden>
-    <div class="modal-card">
-      <header class="modal-head">
-        <h3 id="onTitle">👋 Bem-vindo!</h3>
-      </header>
-      <div class="modal-body small">
-        <p>Use o menu <strong>🎯 Categoria</strong> para escolher onde jogar. O jogo retoma do <strong>ponto exato</strong> da última sessão.</p>
-        <ul>
-          <li>Uma palavra por palpite.</li>
-          <li>Ícones: <span class="badge rocket">🚀</span>, <span class="badge spark">✨</span>, <span class="badge fire">🔥</span>, <span class="badge snow">❄️</span>.</li>
-          <li>Atalhos: <kbd>Enter</kbd>=Enviar, <kbd>Esc</kbd>=Limpar, <kbd>A</kbd>=Ajuda (fora do campo), <kbd>?</kbd>=Dicas.</li>
-        </ul>
-      </div>
-      <footer class="modal-foot">
-        <button id="onStart" class="primary">Começar</button>
-      </footer>
-    </div>
-  </section>
-
-  <!-- Category Panel -->
-  <section id="categoryPanel" class="modal" role="dialog" aria-modal="true" aria-labelledby="catTitle" hidden>
-    <div class="modal-card">
-      <header class="modal-head">
-        <h3 id="catTitle">🎯 Escolher categoria</h3>
-        <button id="closeCategory" class="ghost" aria-label="Fechar">✕</button>
-      </header>
-      <div class="modal-body">
-        <ul id="categoryList" class="list"></ul>
-      </div>
-    </div>
-  </section>
-
-  <footer class="footer" role="contentinfo">
-    <small>© 2025 — DDS TechnipFMC · PWA · Offline Ready</small>
-  </footer>
-
-  <script defer>
-    window.DEFAULT_DATA = [{"categoria": "EPIs (Equipamentos de Proteção Individual)", "palavras": ["Capacete", "Luva", "Óculos", "Macacão", "Viseira", "Jugular", "Carneira", "Botina", "Protetor", "Respirador", "Máscara", "Avental", "Mangote", "Calçado", "Colete", "Joelheira", "Touca", "EPI"]}, {"categoria": "Segurança e Prevenção", "palavras": ["Segurança", "Sinalização", "Extintor", "Emergência", "Iluminação", "Cadeado", "Etiqueta", "Evacuação", "Simulado", "Brigada", "Isolamento"]}, {"categoria": "Logística e Armazenamento", "palavras": ["Estoque", "Embalagem", "Palete", "Empilhadeira", "Carrinho", "Código", "Armazenagem", "Movimentação", "Separação", "Inventário", "Conferência", "Almoxarifado", "Rastreabilidade", "Etiquetagem"]}, {"categoria": "Inspeção e Controle", "palavras": ["Inspeção", "Validade", "Checklist", "Auditoria", "Fiscalização", "Integridade", "Calibração", "Certificação", "Homologação", "Controle", "Relatório", "Registro"]}, {"categoria": "Ferramentas e Componentes", "palavras": ["Chapa", "Cabos", "Manilha", "Catraca", "Talha", "Corrente", "Mosquetão", "Gancho", "Roletes", "Alicate", "Martelo", "Serra", "Furadeira", "Parafusadeira", "Trena", "Nível", "Multímetro"]}, {"categoria": "Procedimentos e Treinamentos", "palavras": ["DDS", "Treinamento", "Procedimento", "Cronograma", "Documento", "Plano", "Integração", "Palestra", "SIPAT", "Avaliação", "Certificado", "Programa", "Comunicação", "Reunião", "Feedback"]}, {"categoria": "Operações e Atividades", "palavras": ["Transporte", "Carga", "Embarque", "Desembarque", "Limpeza", "Coleta", "Abastecimento", "Reposição", "Monitoramento", "Supervisão", "Apoio", "Atendimento", "Operação"]}, {"categoria": "Infraestrutura e Instalações", "palavras": ["Vestiário", "Refeitório", "Área", "Sala", "Oficina", "Galpão", "Plataforma", "Armazenamento", "Descarte", "Manutenção", "Portaria", "Estacionamento", "Escritório", "Administrativa", "Técnica", "Externa", "Interna"]}];
-  </script>
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-  <script defer src="./firebase-config.js"></script>
-  <script defer src="./app.js"></script>
 </body>
 </html>
